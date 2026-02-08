@@ -14,9 +14,47 @@ const configPath = path.join(crewDir, 'config.json');
 const indexPath = path.join(crewDir, 'index.html');
 const townBeadsDir = path.join(townRoot, '.beads');
 
+// Read routes.jsonl to build prefix -> rig name mapping (for frontend display)
+function buildRigPrefixMap() {
+  const routesPath = path.join(townBeadsDir, 'routes.jsonl');
+  const map = {};
+  try {
+    const lines = fs.readFileSync(routesPath, 'utf8').trim().split('\n');
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const route = JSON.parse(line);
+      const prefix = route.prefix.replace(/-$/, '');
+      const key = prefix.includes('-') ? prefix.substring(0, prefix.indexOf('-')) : prefix;
+      const rigName = route.path === '.' ? 'town' : route.path;
+      if (!map[key]) map[key] = rigName;
+    }
+  } catch {}
+  return map;
+}
+
 // Build prefix-to-beadsDir map for resolving bead IDs across rigs
 function buildPrefixMap() {
   const map = { hq: townBeadsDir };
+
+  // Use routes.jsonl for prefix resolution
+  const routesPath = path.join(townBeadsDir, 'routes.jsonl');
+  try {
+    const lines = fs.readFileSync(routesPath, 'utf8').trim().split('\n');
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const route = JSON.parse(line);
+      const prefix = route.prefix.replace(/-$/, '');
+      const rigPath = route.path === '.' ? '' : route.path;
+      const beadsDir = rigPath ? path.join(townRoot, rigPath, '.beads') : townBeadsDir;
+      map[prefix] = beadsDir;
+      // Also map first segment for multi-segment prefixes
+      const firstSeg = prefix.includes('-') ? prefix.substring(0, prefix.indexOf('-')) : prefix;
+      if (firstSeg !== prefix) map[firstSeg] = beadsDir;
+      if (rigPath) map[rigPath] = beadsDir;
+    }
+  } catch {}
+
+  // Also scan for rig directories (fallback)
   try {
     const entries = fs.readdirSync(townRoot, { withFileTypes: true });
     for (const e of entries) {
@@ -24,13 +62,7 @@ function buildPrefixMap() {
       const beadsDir = path.join(townRoot, e.name, '.beads');
       const dbPath = path.join(beadsDir, 'beads.db');
       if (fs.existsSync(dbPath)) {
-        // Read prefix from config or use directory name
-        try {
-          const cfgPath = path.join(beadsDir, 'config.json');
-          const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-          if (cfg.prefix) map[cfg.prefix] = beadsDir;
-        } catch {}
-        map[e.name] = beadsDir;
+        if (!map[e.name]) map[e.name] = beadsDir;
       }
     }
   } catch {}
@@ -148,6 +180,9 @@ async function handleReady(req, res) {
 async function handleStatus(req, res) {
   try {
     const data = await execCmd('gt', ['status', '--json']);
+    if (typeof data === 'object' && data !== null) {
+      data.rigPrefixes = buildRigPrefixMap();
+    }
     sendJSON(res, data);
   } catch (e) {
     sendJSON(res, { error: e.message }, 500);
