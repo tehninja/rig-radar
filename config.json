@@ -3,7 +3,8 @@
     "hideSystemBeads": true,
     "hideEvents": true,
     "hideRigIdentity": true,
-    "hideMaintenanceWisps": true
+    "hideMaintenanceWisps": true,
+    "hideHQBeads": true
   },
   "server": {
     "port": 9292,

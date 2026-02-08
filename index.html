@@ -444,6 +444,10 @@ async function api(path, opts = {}) {
 function shouldHide(bead) {
   if (!state.config) return false;
   const f = state.config.filters;
+
+  // HQ filter is independent - hide town-level beads by default
+  if (f.hideHQBeads && beadRig(bead) === 'town') return true;
+
   if (!f.hideSystemBeads) return false; // show all when disabled
 
   const id = bead.id || '';
@@ -507,6 +511,7 @@ function renderFilters() {
   if (!state.config) return;
   const f = state.config.filters;
   const toggles = [
+    { key: 'hideHQBeads', label: 'Hide HQ beads' },
     { key: 'hideSystemBeads', label: 'Hide system beads' },
     { key: 'hideEvents', label: 'Hide events' },
     { key: 'hideRigIdentity', label: 'Hide rig identity beads' },
