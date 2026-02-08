@@ -527,13 +527,18 @@ func TestBuildPrefixMapWithRig(t *testing.T) {
 
 	townRoot = t.TempDir()
 
+	// Create town-level beads dir with routes.jsonl
+	townBeads := filepath.Join(townRoot, ".beads")
+	os.MkdirAll(townBeads, 0755)
+	// Create routes.jsonl with a rig entry
+	os.WriteFile(filepath.Join(townBeads, "routes.jsonl"),
+		[]byte(`{"prefix":"mr-","path":"myrig"}`+"\n"), 0644)
+
 	// Create a rig with beads
 	rigBeads := filepath.Join(townRoot, "myrig", ".beads")
 	os.MkdirAll(rigBeads, 0755)
 	// Create beads.db file (required for detection)
 	os.WriteFile(filepath.Join(rigBeads, "beads.db"), []byte(""), 0644)
-	// Create config.json with prefix
-	os.WriteFile(filepath.Join(rigBeads, "config.json"), []byte(`{"prefix":"mr"}`), 0644)
 
 	m := buildPrefixMap()
 
@@ -542,10 +547,10 @@ func TestBuildPrefixMapWithRig(t *testing.T) {
 		t.Error("should have hq key")
 	}
 	if _, ok := m["myrig"]; !ok {
-		t.Error("should have myrig key from directory name")
+		t.Error("should have myrig key from directory name or routes")
 	}
 	if _, ok := m["mr"]; !ok {
-		t.Error("should have mr key from config prefix")
+		t.Error("should have mr key from routes.jsonl prefix")
 	}
 	if m["mr"] != rigBeads {
 		t.Errorf("mr prefix should point to %q, got %q", rigBeads, m["mr"])
