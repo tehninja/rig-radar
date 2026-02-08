@@ -32,6 +32,7 @@ type Filters struct {
 	HideEvents           bool `json:"hideEvents"`
 	HideRigIdentity      bool `json:"hideRigIdentity"`
 	HideMaintenanceWisps bool `json:"hideMaintenanceWisps"`
+	HideHQBeads          bool `json:"hideHQBeads"`
 }
 
 type ServerConfig struct {
@@ -144,6 +145,7 @@ func loadConfig() Config {
 			HideEvents:           true,
 			HideRigIdentity:      true,
 			HideMaintenanceWisps: true,
+			HideHQBeads:          true,
 		},
 		Server:          ServerConfig{Port: 9292, Host: "localhost"},
 		RefreshInterval: 30000,

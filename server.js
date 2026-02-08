@@ -66,7 +66,7 @@ function loadConfig() {
     return JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } catch {
     return {
-      filters: { hideSystemBeads: true, hideEvents: true, hideRigIdentity: true, hideMaintenanceWisps: true },
+      filters: { hideSystemBeads: true, hideEvents: true, hideRigIdentity: true, hideMaintenanceWisps: true, hideHQBeads: true },
       server: { port: 9292, host: 'localhost' },
       refreshInterval: 30000
     };
