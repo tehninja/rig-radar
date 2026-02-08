@@ -145,7 +145,7 @@ func loadConfig() Config {
 			HideRigIdentity:      true,
 			HideMaintenanceWisps: true,
 		},
-		Server:          ServerConfig{Port: 8081, Host: "localhost"},
+		Server:          ServerConfig{Port: 9292, Host: "localhost"},
 		RefreshInterval: 30000,
 	}
 
@@ -385,7 +385,7 @@ func main() {
 		listenPort = *port
 	}
 	if listenPort == 0 {
-		listenPort = 8081
+		listenPort = 9292
 	}
 
 	host := cfg.Server.Host

@@ -67,7 +67,7 @@ function loadConfig() {
   } catch {
     return {
       filters: { hideSystemBeads: true, hideEvents: true, hideRigIdentity: true, hideMaintenanceWisps: true },
-      server: { port: 8081, host: 'localhost' },
+      server: { port: 9292, host: 'localhost' },
       refreshInterval: 30000
     };
   }
@@ -252,7 +252,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 const config = loadConfig();
-const port = portOverride || config.server.port || 8081;
+const port = portOverride || config.server.port || 9292;
 const host = config.server.host || 'localhost';
 
 server.listen(port, host, () => {

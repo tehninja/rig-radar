@@ -35,7 +35,7 @@ node server.js
 ./bin/beadboard --open
 ```
 
-Default: http://localhost:8081
+Default: http://localhost:9292
 
 ## Config
 
