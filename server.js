@@ -256,7 +256,7 @@ const port = portOverride || config.server.port || 9292;
 const host = config.server.host || 'localhost';
 
 server.listen(port, host, () => {
-  console.log(`Beadboard running at http://${host}:${port}`);
+  console.log(`Rigradar running at http://${host}:${port}`);
   console.log(`Town root: ${townRoot}`);
   if (openBrowser) {
     const cmd = process.platform === 'darwin' ? 'open' : 'xdg-open';

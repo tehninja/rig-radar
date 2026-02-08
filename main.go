@@ -422,7 +422,7 @@ func main() {
 		server.Shutdown(shutdownCtx)
 	}()
 
-	fmt.Printf("Beadboard running at http://%s\n", addr)
+	fmt.Printf("Rigradar running at http://%s\n", addr)
 	fmt.Printf("Town root: %s\n", townRoot)
 	fmt.Printf("Engine: Go\n")
 

@@ -1,4 +1,4 @@
-# Beadboard - Gas Town Bead Viewer
+# Rigradar - Gas Town Bead Viewer
 
 Three-panel bead viewer for Gas Town. Shows ready/in-progress beads across all rigs, filters system noise, and provides copyable commands for bead management.
 
@@ -8,16 +8,16 @@ Three-panel bead viewer for Gas Town. Shows ready/in-progress beads across all r
 
 ```bash
 # Build
-go build -o bin/beadboard-go .
+go build -o bin/rigradar-go .
 
 # Run
-./bin/beadboard-go
+./bin/rigradar-go
 
 # Custom port
-./bin/beadboard-go --port 3000
+./bin/rigradar-go --port 3000
 
 # Open browser automatically
-./bin/beadboard-go --open
+./bin/rigradar-go --open
 ```
 
 ### Node.js
@@ -26,13 +26,13 @@ go build -o bin/beadboard-go .
 node server.js
 
 # Or via wrapper
-./bin/beadboard
+./bin/rigradar
 
 # Custom port
-./bin/beadboard --port 3000
+./bin/rigradar --port 3000
 
 # Open browser automatically
-./bin/beadboard --open
+./bin/rigradar --open
 ```
 
 Default: http://localhost:9292
