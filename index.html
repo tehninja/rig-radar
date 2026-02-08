@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beadboard - Gas Town Bead Viewer</title>
+<style>
+:root {
+  --bg-dark: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-hover: #1f2f50;
+  --bg-input: #0f1629;
+  --border: #2a3a5e;
+  --text: #e0e0e0;
+  --text-muted: #8892a8;
+  --accent: #4fc3f7;
+  --accent-dim: #2a7fa8;
+  --green: #66bb6a;
+  --orange: #ffa726;
+  --red: #ef5350;
+  --purple: #ab47bc;
+  --yellow: #ffee58;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  background: var(--bg-dark);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr 340px;
+  height: 100vh;
+}
+.layout.detail-closed { grid-template-columns: 240px 1fr 0; }
+
+/* Sidebar */
+.sidebar {
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sidebar h1 {
+  font-size: 16px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar h1 .icon { font-size: 20px; }
+.sidebar h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.town-overview {
+  background: var(--bg-input);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 12px;
+}
+.town-overview .stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+.town-overview .stat .val { color: var(--accent); font-weight: bold; }
+
+/* Filter toggles */
+.filters { display: flex; flex-direction: column; gap: 6px; }
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.filter-toggle:hover { background: var(--bg-hover); }
+.filter-toggle input { accent-color: var(--accent); }
+
+/* Rig list */
+.rig-list { display: flex; flex-direction: column; gap: 4px; }
+.rig-item {
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+.rig-item:hover, .rig-item.active { background: var(--bg-hover); }
+.rig-item .count {
+  background: var(--accent-dim);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+/* Priority stats */
+.priority-stats { display: flex; gap: 6px; flex-wrap: wrap; }
+.p-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+.p-badge.p0 { background: var(--red); color: #fff; }
+.p-badge.p1 { background: var(--orange); color: #000; }
+.p-badge.p2 { background: var(--accent-dim); color: #fff; }
+.p-badge.p3 { background: var(--border); color: var(--text); }
+.p-badge.p4 { background: var(--bg-input); color: var(--text-muted); }
+
+.refresh-btn {
+  background: var(--accent-dim);
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  width: 100%;
+}
+.refresh-btn:hover { background: var(--accent); color: #000; }
+.refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Main panel */
+.main-panel {
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.main-panel h2 {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 20px 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.main-panel h2:first-child { margin-top: 0; }
+.main-panel h2 .badge {
+  background: var(--accent-dim);
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 11px;
+}
+
+/* Rig group header */
+.rig-group {
+  margin-bottom: 12px;
+}
+.rig-group-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  padding: 4px 8px;
+  margin-bottom: 4px;
+}
+
+/* Bead card */
+.bead-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.bead-card:hover { border-color: var(--accent-dim); background: var(--bg-hover); }
+.bead-card.selected { border-color: var(--accent); background: var(--bg-hover); }
+.bead-card .bead-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.bead-card .bead-id {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: bold;
+}
+.bead-card .bead-priority {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+.bead-card .bead-title {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.bead-card .bead-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 10px;
+}
+.bead-card .bead-type {
+  text-transform: capitalize;
+}
+
+/* Detail panel */
+.detail-panel {
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+  transition: width 0.2s;
+}
+.detail-closed .detail-panel { display: none; }
+.detail-panel h2 {
+  font-size: 14px;
+  color: var(--accent);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.detail-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.detail-close:hover { background: var(--bg-hover); color: var(--text); }
+
+.detail-field {
+  margin-bottom: 12px;
+}
+.detail-field .label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+.detail-field .value {
+  font-size: 13px;
+  color: var(--text);
+}
+.detail-field .value.desc {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-input);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Dependencies */
+.dep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dep-item {
+  font-size: 12px;
+  padding: 4px 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+.dep-item .dep-type {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Copyable commands */
+.cmd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cmd-row {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  gap: 8px;
+}
+.cmd-row code {
+  flex: 1;
+  color: var(--green);
+  font-family: inherit;
+}
+.cmd-copy {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.cmd-copy:hover { border-color: var(--accent); color: var(--accent); }
+.cmd-copy.copied { border-color: var(--green); color: var(--green); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Loading indicator */
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.loading::after {
+  content: '';
+  animation: dots 1.5s steps(3, end) infinite;
+}
+@keyframes dots {
+  0% { content: '.'; }
+  33% { content: '..'; }
+  66% { content: '...'; }
+}
+
+/* Status dot */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.status-dot.open { background: var(--green); }
+.status-dot.in_progress { background: var(--orange); }
+.status-dot.closed { background: var(--text-muted); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+</style>
+</head>
+<body>
+
+<div class="layout" id="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h1><span class="icon">&#x1F4E1;</span> Beadboard</h1>
+
+    <div>
+      <h2>Town Overview</h2>
+      <div class="town-overview" id="townOverview">
+        <div class="loading">Loading</div>
+      </div>
+    </div>
+
+    <div>
+      <h2>Filters</h2>
+      <div class="filters" id="filterToggles"></div>
+    </div>
+
+    <div>
+      <h2>Rigs</h2>
+      <div class="rig-list" id="rigList">
+        <div class="loading">Loading</div>
+      </div>
+    </div>
+
+    <div>
+      <h2>Priority</h2>
+      <div class="priority-stats" id="priorityStats"></div>
+    </div>
+
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">Refresh</button>
+  </div>
+
+  <!-- Main panel -->
+  <div class="main-panel" id="mainPanel">
+    <div class="loading">Loading beads</div>
+  </div>
+
+  <!-- Detail panel -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="empty-state">Select a bead to view details</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// State
+let state = {
+  config: null,
+  readyData: null,
+  statusData: null,
+  allBeads: [],
+  selectedBead: null,
+  selectedRig: null, // filter by rig name
+  loading: false
+};
+
+// Priority colors
+const P_COLORS = { 0: 'p0', 1: 'p1', 2: 'p2', 3: 'p3', 4: 'p4' };
+const P_LABELS = { 0: 'P0', 1: 'P1', 2: 'P2', 3: 'P3', 4: 'P4' };
+
+// Escape HTML
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// API helpers
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  return res.json();
+}
+
+// Filter logic
+function shouldHide(bead) {
+  if (!state.config) return false;
+  const f = state.config.filters;
+  if (!f.hideSystemBeads) return false; // show all when disabled
+
+  const id = bead.id || '';
+  const type = bead.issue_type || '';
+  const labels = bead.labels || [];
+
+  if (f.hideEvents && type === 'event') return true;
+  if (f.hideRigIdentity && type === 'rig' && (/^gt-rig-/.test(id) || /^hq-rig-/.test(id))) return true;
+  if (f.hideMaintenanceWisps && bead.ephemeral) {
+    const labelStr = Array.isArray(labels) ? labels.join(' ') : '';
+    if (/type:plugin-run/.test(labelStr) || /category:maintenance/.test(labelStr)) return true;
+  }
+  return false;
+}
+
+// Determine which rig a bead belongs to based on its ID prefix
+function beadRig(bead) {
+  const id = bead.id || '';
+  // ID format: prefix-type-hash or prefix-hash
+  if (id.startsWith('hq-')) return 'town';
+  const dash = id.indexOf('-');
+  if (dash > 0) return id.substring(0, dash);
+  return 'unknown';
+}
+
+// Group beads by rig
+function groupByRig(beads) {
+  const groups = {};
+  for (const b of beads) {
+    const rig = beadRig(b);
+    if (!groups[rig]) groups[rig] = [];
+    groups[rig].push(b);
+  }
+  return groups;
+}
+
+// Render town overview
+function renderOverview() {
+  const el = document.getElementById('townOverview');
+  const s = state.statusData;
+  if (!s) { el.innerHTML = '<div class="loading">Loading</div>'; return; }
+
+  const rigCount = (s.rigs || []).length;
+  const agentCount = (s.agents || []).length;
+  const total = state.allBeads.length;
+  const open = state.allBeads.filter(b => b.status === 'open').length;
+  const inProgress = state.allBeads.filter(b => b.status === 'in_progress').length;
+
+  el.innerHTML = `
+    <div class="stat"><span>Rigs</span><span class="val">${rigCount}</span></div>
+    <div class="stat"><span>Agents</span><span class="val">${agentCount}</span></div>
+    <div class="stat"><span>Total beads</span><span class="val">${total}</span></div>
+    <div class="stat"><span>Open</span><span class="val">${open}</span></div>
+    <div class="stat"><span>In Progress</span><span class="val">${inProgress}</span></div>
+  `;
+}
+
+// Render filter toggles
+function renderFilters() {
+  const el = document.getElementById('filterToggles');
+  if (!state.config) return;
+  const f = state.config.filters;
+  const toggles = [
+    { key: 'hideSystemBeads', label: 'Hide system beads' },
+    { key: 'hideEvents', label: 'Hide events' },
+    { key: 'hideRigIdentity', label: 'Hide rig identity beads' },
+    { key: 'hideMaintenanceWisps', label: 'Hide maintenance wisps' }
+  ];
+  el.innerHTML = toggles.map(t => `
+    <label class="filter-toggle">
+      <input type="checkbox" data-filter="${t.key}" ${f[t.key] ? 'checked' : ''}>
+      ${esc(t.label)}
+    </label>
+  `).join('');
+
+  el.querySelectorAll('input[data-filter]').forEach(inp => {
+    inp.addEventListener('change', async () => {
+      state.config.filters[inp.dataset.filter] = inp.checked;
+      await api('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filters: state.config.filters })
+      });
+      renderMain();
+    });
+  });
+}
+
+// Render rig list in sidebar
+function renderRigList() {
+  const el = document.getElementById('rigList');
+  const rigs = state.statusData ? (state.statusData.rigs || []) : [];
+
+  // Count beads per rig
+  const visible = state.allBeads.filter(b => !shouldHide(b));
+  const counts = {};
+  for (const b of visible) {
+    const r = beadRig(b);
+    counts[r] = (counts[r] || 0) + 1;
+  }
+
+  let html = `<div class="rig-item ${!state.selectedRig ? 'active' : ''}" data-rig="">
+    <span>All</span><span class="count">${visible.length}</span>
+  </div>`;
+
+  // Town-level beads
+  if (counts['town']) {
+    html += `<div class="rig-item ${state.selectedRig === 'town' ? 'active' : ''}" data-rig="town">
+      <span>town (HQ)</span><span class="count">${counts['town']}</span>
+    </div>`;
+  }
+
+  for (const rig of rigs) {
+    const name = rig.name;
+    const c = counts[name] || 0;
+    html += `<div class="rig-item ${state.selectedRig === name ? 'active' : ''}" data-rig="${esc(name)}">
+      <span>${esc(name)}</span><span class="count">${c}</span>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+  el.querySelectorAll('.rig-item').forEach(item => {
+    item.addEventListener('click', () => {
+      state.selectedRig = item.dataset.rig || null;
+      renderRigList();
+      renderMain();
+    });
+  });
+}
+
+// Render priority stats
+function renderPriorityStats() {
+  const el = document.getElementById('priorityStats');
+  const visible = state.allBeads.filter(b => !shouldHide(b));
+  const counts = [0, 0, 0, 0, 0];
+  for (const b of visible) {
+    const p = b.priority != null ? b.priority : 2;
+    if (p >= 0 && p <= 4) counts[p]++;
+  }
+  el.innerHTML = counts.map((c, i) => c > 0 ? `<span class="p-badge ${P_COLORS[i]}">${P_LABELS[i]}: ${c}</span>` : '').join('');
+}
+
+// Render main bead list
+function renderMain() {
+  const el = document.getElementById('mainPanel');
+  let beads = state.allBeads.filter(b => !shouldHide(b));
+
+  // Filter by selected rig
+  if (state.selectedRig) {
+    beads = beads.filter(b => beadRig(b) === state.selectedRig);
+  }
+
+  const ready = beads.filter(b => b.status === 'open');
+  const inProgress = beads.filter(b => b.status === 'in_progress');
+  const closed = beads.filter(b => b.status === 'closed');
+
+  let html = '';
+
+  // Ready section
+  html += `<h2><span class="status-dot open"></span> Ready <span class="badge">${ready.length}</span></h2>`;
+  if (ready.length === 0) {
+    html += '<div class="empty-state">No ready beads</div>';
+  } else {
+    html += renderBeadGroups(ready);
+  }
+
+  // In Progress section
+  html += `<h2><span class="status-dot in_progress"></span> In Progress <span class="badge">${inProgress.length}</span></h2>`;
+  if (inProgress.length === 0) {
+    html += '<div class="empty-state">No in-progress beads</div>';
+  } else {
+    html += renderBeadGroups(inProgress);
+  }
+
+  // Closed section (collapsed by default)
+  if (closed.length > 0) {
+    html += `<h2><span class="status-dot closed"></span> Closed <span class="badge">${closed.length}</span></h2>`;
+    html += renderBeadGroups(closed);
+  }
+
+  el.innerHTML = html;
+
+  // Attach click handlers
+  el.querySelectorAll('.bead-card').forEach(card => {
+    card.addEventListener('click', () => selectBead(card.dataset.id));
+  });
+
+  // Update sidebar counts
+  renderRigList();
+  renderPriorityStats();
+}
+
+function renderBeadGroups(beads) {
+  const groups = groupByRig(beads);
+  let html = '';
+  for (const [rig, rigBeads] of Object.entries(groups).sort()) {
+    html += `<div class="rig-group">`;
+    html += `<div class="rig-group-header">${esc(rig)}</div>`;
+    for (const b of rigBeads) {
+      const selected = state.selectedBead && state.selectedBead.id === b.id;
+      const pClass = P_COLORS[b.priority != null ? b.priority : 2];
+      html += `
+        <div class="bead-card ${selected ? 'selected' : ''}" data-id="${esc(b.id)}">
+          <div class="bead-header">
+            <span class="bead-id">${esc(b.id)}</span>
+            <span class="bead-priority ${pClass}">${P_LABELS[b.priority != null ? b.priority : 2]}</span>
+          </div>
+          <div class="bead-title">${esc(b.title)}</div>
+          <div class="bead-meta">
+            <span class="bead-type">${esc(b.issue_type || 'task')}</span>
+            ${b.dependency_count ? `<span>deps: ${b.dependency_count}</span>` : ''}
+            ${b.ephemeral ? '<span>ephemeral</span>' : ''}
+          </div>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+  return html;
+}
+
+// Select a bead and show detail
+async function selectBead(id) {
+  const layout = document.getElementById('layout');
+  layout.classList.remove('detail-closed');
+
+  const panel = document.getElementById('detailPanel');
+  panel.innerHTML = '<div class="loading">Loading bead</div>';
+
+  try {
+    const data = await api(`/api/bead/${encodeURIComponent(id)}`);
+    const bead = Array.isArray(data) ? data[0] : data;
+    state.selectedBead = bead;
+    renderDetail(bead);
+    renderMain(); // update selected highlight
+  } catch (e) {
+    panel.innerHTML = `<div class="empty-state">Error loading bead: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderDetail(bead) {
+  if (!bead) return;
+  const panel = document.getElementById('detailPanel');
+  const pClass = P_COLORS[bead.priority != null ? bead.priority : 2];
+  const deps = bead.dependencies || [];
+
+  const commands = [
+    { label: 'View details', cmd: `gt cat ${bead.id}` },
+    { label: 'Assign work', cmd: `gt sling ${bead.id} <target>` },
+    { label: 'Remove from hook', cmd: `gt unsling ${bead.id}` },
+    { label: 'Close bead', cmd: `bd close ${bead.id}` },
+    { label: 'Claim work', cmd: `bd update ${bead.id} --status=in_progress` }
+  ];
+
+  let html = `
+    <h2>
+      <span>${esc(bead.id)}</span>
+      <button class="detail-close" onclick="closeDetail()">&times;</button>
+    </h2>
+
+    <div class="detail-field">
+      <div class="label">Title</div>
+      <div class="value">${esc(bead.title)}</div>
+    </div>
+
+    <div class="detail-field">
+      <div class="label">Status</div>
+      <div class="value"><span class="status-dot ${bead.status}"></span> ${esc(bead.status)}</div>
+    </div>
+
+    <div class="detail-field">
+      <div class="label">Priority</div>
+      <div class="value"><span class="p-badge ${pClass}">${P_LABELS[bead.priority != null ? bead.priority : 2]}</span></div>
+    </div>
+
+    <div class="detail-field">
+      <div class="label">Type</div>
+      <div class="value">${esc(bead.issue_type || 'task')}</div>
+    </div>
+
+    ${bead.ephemeral ? `<div class="detail-field"><div class="label">Ephemeral</div><div class="value">Yes</div></div>` : ''}
+
+    ${bead.parent ? `<div class="detail-field"><div class="label">Parent</div><div class="value">${esc(bead.parent)}</div></div>` : ''}
+
+    <div class="detail-field">
+      <div class="label">Created</div>
+      <div class="value">${esc(formatDate(bead.created_at))}</div>
+    </div>
+  `;
+
+  // Description
+  if (bead.description) {
+    html += `
+      <div class="detail-field">
+        <div class="label">Description</div>
+        <div class="value desc">${esc(bead.description)}</div>
+      </div>`;
+  }
+
+  // Dependencies
+  if (deps.length > 0) {
+    html += `<div class="detail-field"><div class="label">Dependencies (${deps.length})</div><div class="dep-list">`;
+    for (const d of deps) {
+      const depId = d.depends_on_id || d.id || '';
+      const depType = d.dependency_type || d.type || '';
+      const depTitle = d.title || '';
+      html += `<div class="dep-item">
+        <span>${esc(depId)}${depTitle ? ': ' + esc(depTitle) : ''}</span>
+        <span class="dep-type">${esc(depType)}</span>
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Commands
+  html += `<div class="detail-field"><div class="label">Commands</div><div class="cmd-list">`;
+  for (const c of commands) {
+    const encoded = btoa(encodeURIComponent(c.cmd));
+    html += `
+      <div class="cmd-row">
+        <code>${esc(c.cmd)}</code>
+        <button class="cmd-copy" data-cmd="${encoded}" onclick="copyCmd(this, decodeURIComponent(atob(this.dataset.cmd)))">${esc(c.label)}</button>
+      </div>`;
+  }
+  html += `</div></div>`;
+
+  panel.innerHTML = html;
+}
+
+function closeDetail() {
+  document.getElementById('layout').classList.add('detail-closed');
+  state.selectedBead = null;
+  renderMain();
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  try {
+    return new Date(d).toLocaleString();
+  } catch { return d; }
+}
+
+async function copyCmd(btn, text) {
+  const original = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  btn.textContent = 'Copied!';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+}
+
+// Data loading
+async function loadConfig() {
+  state.config = await api('/api/config');
+  renderFilters();
+}
+
+async function loadStatus() {
+  state.statusData = await api('/api/status');
+  renderOverview();
+  renderRigList();
+}
+
+async function loadBeads() {
+  // Load all beads (open + in_progress + closed)
+  const [open, inProg, closed] = await Promise.all([
+    api('/api/beads?status=open'),
+    api('/api/beads?status=in_progress'),
+    api('/api/beads?status=closed')
+  ]);
+  state.allBeads = [
+    ...(Array.isArray(open) ? open : []),
+    ...(Array.isArray(inProg) ? inProg : []),
+    ...(Array.isArray(closed) ? closed : [])
+  ];
+  renderMain();
+  renderPriorityStats();
+}
+
+async function refreshAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = 'Refreshing...';
+  try {
+    await Promise.all([loadConfig(), loadStatus(), loadBeads()]);
+  } catch (e) {
+    console.error('Refresh error:', e);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Refresh';
+}
+
+// Initial load
+document.getElementById('layout').classList.add('detail-closed');
+refreshAll();
+
+// Auto-refresh
+let autoRefreshTimer = null;
+function startAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  const interval = (state.config && state.config.refreshInterval) || 30000;
+  autoRefreshTimer = setInterval(refreshAll, interval);
+}
+// Start auto-refresh after first load
+setTimeout(startAutoRefresh, 2000);
+</script>
+</body>
+</html>

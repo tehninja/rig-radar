@@ -1,0 +1,13 @@
+{
+  "filters": {
+    "hideSystemBeads": true,
+    "hideEvents": true,
+    "hideRigIdentity": true,
+    "hideMaintenanceWisps": true
+  },
+  "server": {
+    "port": 8081,
+    "host": "localhost"
+  },
+  "refreshInterval": 30000
+}
