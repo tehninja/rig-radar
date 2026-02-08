@@ -418,6 +418,7 @@ let state = {
   config: null,
   readyData: null,
   statusData: null,
+  rigPrefixes: {}, // prefix -> rig name mapping (e.g. "ri" -> "rigradar")
   allBeads: [],
   selectedBead: null,
   selectedRig: null, // filter by rig name
@@ -462,10 +463,14 @@ function shouldHide(bead) {
 // Determine which rig a bead belongs to based on its ID prefix
 function beadRig(bead) {
   const id = bead.id || '';
-  // ID format: prefix-type-hash or prefix-hash
   if (id.startsWith('hq-')) return 'town';
   const dash = id.indexOf('-');
-  if (dash > 0) return id.substring(0, dash);
+  if (dash > 0) {
+    const prefix = id.substring(0, dash);
+    // Map prefix to full rig name using routes data
+    if (state.rigPrefixes[prefix]) return state.rigPrefixes[prefix];
+    return prefix;
+  }
   return 'unknown';
 }
 
@@ -810,6 +815,7 @@ async function loadConfig() {
 
 async function loadStatus() {
   state.statusData = await api('/api/status');
+  state.rigPrefixes = state.statusData.rigPrefixes || {};
   renderOverview();
   renderRigList();
 }

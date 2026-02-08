@@ -90,10 +90,87 @@ func findTownRoot(start string) string {
 	return start
 }
 
+// buildRigPrefixNameMap reads routes.jsonl and returns a prefix -> rig name mapping
+// (for frontend display, e.g. "ri" -> "rigradar")
+func buildRigPrefixNameMap() map[string]string {
+	routesPath := filepath.Join(townRoot, ".beads", "routes.jsonl")
+	m := make(map[string]string)
+
+	data, err := os.ReadFile(routesPath)
+	if err != nil {
+		return m
+	}
+
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var route struct {
+			Prefix string `json:"prefix"`
+			Path   string `json:"path"`
+		}
+		if json.Unmarshal([]byte(line), &route) != nil {
+			continue
+		}
+		prefix := strings.TrimSuffix(route.Prefix, "-")
+		key := prefix
+		if idx := strings.Index(prefix, "-"); idx > 0 {
+			key = prefix[:idx]
+		}
+		rigName := route.Path
+		if rigName == "." {
+			rigName = "town"
+		}
+		if _, exists := m[key]; !exists {
+			m[key] = rigName
+		}
+	}
+
+	return m
+}
+
 func buildPrefixMap() map[string]string {
 	townBeadsDir := filepath.Join(townRoot, ".beads")
 	m := map[string]string{"hq": townBeadsDir}
 
+	// Use routes.jsonl for prefix resolution
+	routesPath := filepath.Join(townBeadsDir, "routes.jsonl")
+	data, err := os.ReadFile(routesPath)
+	if err == nil {
+		for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			var route struct {
+				Prefix string `json:"prefix"`
+				Path   string `json:"path"`
+			}
+			if json.Unmarshal([]byte(line), &route) != nil {
+				continue
+			}
+			prefix := strings.TrimSuffix(route.Prefix, "-")
+			rigPath := route.Path
+			beadsDir := townBeadsDir
+			if rigPath != "." {
+				beadsDir = filepath.Join(townRoot, rigPath, ".beads")
+			}
+			m[prefix] = beadsDir
+			// Also map first segment for multi-segment prefixes
+			if idx := strings.Index(prefix, "-"); idx > 0 {
+				firstSeg := prefix[:idx]
+				if _, exists := m[firstSeg]; !exists {
+					m[firstSeg] = beadsDir
+				}
+			}
+			if rigPath != "." {
+				m[rigPath] = beadsDir
+			}
+		}
+	}
+
+	// Also scan for rig directories (fallback)
 	entries, err := os.ReadDir(townRoot)
 	if err != nil {
 		return m
@@ -108,19 +185,9 @@ func buildPrefixMap() map[string]string {
 		if _, err := os.Stat(dbPath); err != nil {
 			continue
 		}
-
-		// Try to read prefix from config
-		cfgPath := filepath.Join(beadsDir, "config.json")
-		data, err := os.ReadFile(cfgPath)
-		if err == nil {
-			var cfg struct {
-				Prefix string `json:"prefix"`
-			}
-			if json.Unmarshal(data, &cfg) == nil && cfg.Prefix != "" {
-				m[cfg.Prefix] = beadsDir
-			}
+		if _, exists := m[e.Name()]; !exists {
+			m[e.Name()] = beadsDir
 		}
-		m[e.Name()] = beadsDir
 	}
 
 	return m
@@ -252,6 +319,20 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		sendError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Enrich with rig prefix mapping for frontend display
+	var statusObj map[string]json.RawMessage
+	if json.Unmarshal(data, &statusObj) == nil {
+		prefixes := buildRigPrefixNameMap()
+		prefixJSON, _ := json.Marshal(prefixes)
+		statusObj["rigPrefixes"] = json.RawMessage(prefixJSON)
+		enriched, _ := json.Marshal(statusObj)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Write(enriched)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(data)
