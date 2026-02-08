@@ -4,8 +4,25 @@ Three-panel bead viewer for Gas Town. Shows ready/in-progress beads across all r
 
 ## Run
 
+### Go (recommended)
+
 ```bash
-# From crew/paul/
+# Build
+go build -o bin/beadboard-go .
+
+# Run
+./bin/beadboard-go
+
+# Custom port
+./bin/beadboard-go --port 3000
+
+# Open browser automatically
+./bin/beadboard-go --open
+```
+
+### Node.js
+
+```bash
 node server.js
 
 # Or via wrapper
